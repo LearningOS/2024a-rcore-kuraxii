@@ -19,6 +19,7 @@ use core::usize;
 use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
+use crate::timer::get_time;
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
@@ -129,6 +130,11 @@ impl TaskManager {
             inner.current_task = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
+
+            if inner.tasks[next].start_time == 0{
+                inner.tasks[next].start_time = get_time_ms();
+            }
+
             drop(inner);
             // before this, we should drop local variables that must be dropped manually
             unsafe {
@@ -140,6 +146,7 @@ impl TaskManager {
         }
     }
 
+
     fn increase_current_syscall_count(&self, syscall_id: usize) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
@@ -150,10 +157,11 @@ impl TaskManager {
         let inner = self.inner.exclusive_access();
         let current = inner.current_task;
 
+        let current_time = get_time_ms();
         TaskInfo {
             status: inner.tasks[current].task_status,
             syscall_times: inner.tasks[current].syscall_times,
-            time: inner.tasks[current].start_time,
+            time: current_time - inner.tasks[current].start_time,
         }
     }
 }

@@ -16,7 +16,7 @@ mod task;
 
 use core::usize;
 
-use crate::config::MAX_APP_NUM;
+use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
 use lazy_static::*;
@@ -143,11 +143,11 @@ impl TaskManager {
     fn increase_current_syscall_count(&self, syscall_id: usize) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
-        inner.tasks[current].syscall_times += 1;
+        inner.tasks[current].syscall_times[syscall_id] += 1;
     }
 
     fn get_current_task_info(&self) -> TaskInfo {
-        let mut inner = self.inner.exclusive_access();
+        let inner = self.inner.exclusive_access();
         let current = inner.current_task;
 
         TaskInfo {
@@ -190,7 +190,7 @@ pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
 }
-
+/// 增加系统调用计数
 pub fn increase_current_syscall_count(syscall_id: usize) {
     if syscall_id >= MAX_SYSCALL_NUM {
         return;
@@ -198,6 +198,7 @@ pub fn increase_current_syscall_count(syscall_id: usize) {
     TASK_MANAGER.increase_current_syscall_count(syscall_id);
 }
 
+/// 获取 当前任务的info
 pub fn get_current_task_info() -> TaskInfo {
     TASK_MANAGER.get_current_task_info()
 }
